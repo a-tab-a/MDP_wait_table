@@ -592,7 +592,7 @@ def calc_wait_time(all_paths,transition_matrix,transit_time):
 """Ownship Default value/Constant Value"""
 
 own_pos=[0,0,0]   #ownship position
-own_velocity_profile=np.array([30,5,0]) 
+own_velocity_profile=np.array([50,5,0]) 
 
 """User_Input"""
 
@@ -605,7 +605,7 @@ start_alt=[-Z,Z]
 start_hv=[80,200]
 start_vv=[-10,10]
 start_turn=[-5,5]
-num_bin=[8,8,4,5,5,5]  #R_x,R_y,Z,Rhdot,Zdot and turnrate
+num_bin=[5,5,4,5,5,5]  #R_x,R_y,Z,Rhdot,Zdot and turnrate
 transition_time=1; #1 second
 
 
@@ -725,7 +725,7 @@ if __name__ == '__main__':
         
 
         ##Transition to other states with horizontal dynamic model##
-        horizontal_iter=0
+
         for horizontal_value in horizontal_values:
             turn_iter=0 #this i used to access the associated probability value from array
             for turn_rate_value in turn_rate_values:
@@ -749,7 +749,7 @@ if __name__ == '__main__':
      
                 rel_hx=intruder_hx-own_hx
                 rel_hy=intruder_hy-own_hx
-                z_rate=rel_vv_bin_values[rel_vv_idx]
+                z_rate=filter_dynamics[1]
                 
                 x_vertices=[xrng1,xrng2]
                 y_vertices=[yrng1,yrng2]
@@ -786,8 +786,10 @@ if __name__ == '__main__':
                 
                 ##find the index of probability value##
                 
-                ii=horizontal_iter   
-                jj=turn_iter
+                prob_idx_h=np.argwhere(horizontal_values==horizontal_value)
+                prob_idx_t=np.argwhere(turn_rate_values==turn_rate_value)
+                ii=prob_idx_h[0];   
+                jj=prob_idx_t[0];
                 
                 if out_cond==True:   #whole matrix outside the range 
                 
@@ -799,7 +801,7 @@ if __name__ == '__main__':
                     continue
                  
                 #if not continue for rectangle 
-                start_value=[start_hv[0],start_vv[0],start_turn[0]]
+                start_value=[start_xrng[0],start_yrng[0],start_alt[0]]
                 [unique_cube_idx,out_bound_vertice]=check_duplicate(new_occ_cube,start_value,bin_val)
                 
                 new_vertices_set=[]
@@ -824,10 +826,10 @@ if __name__ == '__main__':
 
                 #find the dynamics index#
                 
-                rel_hv_new_idx=(abs(start_hv[0]-filter_dynamics[0])//bin_val[3])
-                rel_vv_new_idx=(abs(start_vv[0]-z_rate)//bin_val[4])
-                turn_rate_new_idx=np.argwhere(turn_rate_bin_values==filter_dynamics[2])
-                turn_rate_new_idx=turn_rate_new_idx[0]
+                rel_hv_new_idx=int((abs(start_hv[0]-filter_dynamics[0]))//bin_val[3])
+                rel_vv_new_idx=int((abs(start_vv[0]-filter_dynamics[1]))//bin_val[4])
+                turn_rate_new_idx_pos=np.argwhere(turn_rate_bin_values==filter_dynamics[2])
+                turn_rate_new_idx=turn_rate_new_idx_pos[0]
                 rel_hv_trgt_bin=bin_to_idx( rel_hv_new_idx, num_bin[3])
                 rel_vv_trgt_bin=bin_to_idx(rel_vv_new_idx,num_bin[4])
                 turn_rate_trgt_bin=turn_rate_new_idx+1
@@ -836,9 +838,8 @@ if __name__ == '__main__':
                 
                 
                 p_value_filled=0 
-                
+                p_value=0;
                 for aa in range(len(all_overlap)):
-                
 
                     p_value=(horizontal_values_ps[ii]*turn_rate_values_ps[jj]*maneuver_probability[0]*all_overlap[aa])
                     pos_bin=unique_cube_idx[aa]
@@ -858,8 +859,7 @@ if __name__ == '__main__':
                     target_idx=out_state
              
                     matrix_filler(transfer_mat_flat,s,target_idx,out_fill)
-                turn_iter+=1
-            horizontal_iter+=1
+     
 
         #for vertical maneuver#
         vertical_iter=0;
@@ -884,7 +884,7 @@ if __name__ == '__main__':
  
             rel_hx=intruder_hx-own_hx
             rel_hy=intruder_hy-own_hy
-            z_rate=rel_vv_bin_values[rel_vv_idx]; #vertcial value added
+            z_rate=filter_dynamics[1] #vertcial value added
             
             
             x_vertices=[xrng1,xrng2]
@@ -922,7 +922,8 @@ if __name__ == '__main__':
             
             ##find the index of probability value##
             
-            kk=vertical_iter
+            prob_idx_v=np.argwhere(vertical_values==vertical_value)
+            kk=prob_idx_v[0];
             
             if out_cond==True:   #whole matrix outside the range 
             
@@ -934,7 +935,7 @@ if __name__ == '__main__':
                 continue
              
             #if not continue for rectangle 
-            start_value=[start_hv[0],start_vv[0],start_turn[0]]
+            start_value=[start_xrng[0],start_yrng[0],start_alt[0]]
             [unique_cube_idx_v,out_bound_vertice_v]=check_duplicate(new_occ_cube_v,start_value,bin_val);
             
             new_vertices_set_v=[]
@@ -946,7 +947,7 @@ if __name__ == '__main__':
             
             for row in new_vertices_set_v:
                 
-                overlap_value_v=overlap_cube(new_occ_cube,row)
+                overlap_value_v=overlap_cube(new_occ_cube_v,row)
                 all_overlap_v.append(overlap_value_v)
             
             total_overlap_value_v=round(sum(all_overlap_v),4)
@@ -957,10 +958,10 @@ if __name__ == '__main__':
 
             #find the dynamics index#
             
-            rel_hv_new_idx=(abs(start_hv[0]-filter_dynamics[0])//bin_val[3])
-            rel_vv_new_idx=(abs(start_vv[0]-filter_dynamics[1])//bin_val[4])
-            turn_rate_new_idx=np.argwhere(turn_rate_bin_values==filter_dynamics[2])
-            turn_rate_new_idx=turn_rate_new_idx[0]
+            rel_hv_new_idx=int((abs(start_hv[0]-filter_dynamics[0]))//bin_val[3])
+            rel_vv_new_idx=int((abs(start_vv[0]-filter_dynamics[1]))//bin_val[4])
+            turn_rate_new_idx_pos=np.argwhere(turn_rate_bin_values==filter_dynamics[2])
+            turn_rate_new_idx=turn_rate_new_idx_pos[0]
             rel_hv_trgt_bin=bin_to_idx( rel_hv_new_idx, num_bin[3])
             rel_vv_trgt_bin=bin_to_idx(rel_vv_new_idx,num_bin[4])
             turn_rate_trgt_bin=turn_rate_new_idx+1
@@ -969,10 +970,10 @@ if __name__ == '__main__':
             
             
             p_value_filled_v=0; 
-            
-            for aa in range(len(all_overlap)):
-                p_value_v=(vertical_values_ps[kk]*maneuver_probability[1]*all_overlap[aa])
-                pos_bin=unique_cube_idx[aa]   #bin number for position state 
+            p_value_v=0;
+            for aa in range(len(all_overlap_v)):
+                p_value_v=(vertical_values_ps[kk]*maneuver_probability[1]*all_overlap_v[aa])
+                pos_bin=unique_cube_idx_v[aa]   #bin number for position state 
                 pos_bin.extend(dynamic_bin)
                 target_idx=get_idx(pos_bin,num_bin)
         
@@ -990,7 +991,7 @@ if __name__ == '__main__':
 
                 matrix_filler(transfer_mat_flat,s,target_idx,out_fill_v)
             
-            vertical_iter+=1;
+
   
     trans_mat_shaped=np.reshape(transfer_mat_flat,(states,states)) 
 
@@ -1014,7 +1015,7 @@ if __name__ == '__main__':
     
     final_reward_matrix=np.transpose(reward_together)
 
-    #remove all the collision state and merged them to one#
+    """#remove all the collision state and merged them to one#
     # I am deleting specific index with numpy delete since I had to find the index using np.where ; I get memory error if my array is too large
     #to avoid memory error I am batch processing 
     
@@ -1024,19 +1025,21 @@ if __name__ == '__main__':
     
         batch_data=trans_mat_shaped[(i*states_without_turn):(i+1)*states_without_turn,:]
         row_to_del=[k for k in states_to_delete if (k<=(i+1)*states_without_turn and k>=(i*states_without_turn))] #rows that need to be deleted in this range
-        batch_data_row=np.delete(batch_data,states_to_delete,axis=0)
+        batch_data_row=np.delete(batch_data,row_to_del,axis=0)
         batch_data_col=np.delete(batch_data_row,states_to_delete,axis=1)
         trans_mat_list.extend(batch_data_col)
         
-    #trans_mat_shaped_row=np.delete(trans_mat_shaped,states_to_delete,axis=0);
-    #trans_mat_shaped_col=np.delete(trans_mat_shaped_row,states_to_delete,axis=1);
+
     list_col=[0]*len(trans_mat_list[0][:])
     trans_mat_list.append(list_col) 
-    trans_mat_list.append(list_col)
+    trans_mat_list.append(list_col)    
+    trans_mat_ready=np.array(trans_mat_list)"""
 
+
+    trans_mat_shaped_row=np.delete(trans_mat_shaped,states_to_delete,axis=0);
+    trans_mat_shaped_col=np.delete(trans_mat_shaped_row,states_to_delete,axis=1);
     
-    trans_mat_ready=np.array(trans_mat_list)
-
+    trans_mat_ready=trans_mat_shaped_col
     final_state_number=len(trans_mat_ready[:][1]);
     
     new_out_state=final_state_number-1;
@@ -1070,7 +1073,7 @@ if __name__ == '__main__':
     """for the toolbox, we need to two transition matrix one for taking action 1 or wait another for taking 0 or evasive
     for taking evasive action the mdp will always ended up in out state if not in collision state"""
     
-  
+
     transition_matrix_action1=np.reshape(flat_trans_mat_final,(final_state_number,final_state_number))
     print(np.sum(transition_matrix_action1))
 
